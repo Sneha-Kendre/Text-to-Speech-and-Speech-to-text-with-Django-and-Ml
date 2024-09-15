@@ -1,0 +1,174 @@
+<!doctype html>
+{% load static %}
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speech to Text Converter</title>
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+  <!-- Font Awesome for microphone icon -->
+  <link rel="stylesheet" href="{% static 'fonts/css/font-awesome.css' %}">
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="{% static 'style.css' %}">
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      font-family: 'Helvetica Neue', sans-serif;
+      color: #fff;
+      text-align: center;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    h3 {
+      font-size: 3rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
+
+    .mic {
+      margin-top: 2rem;
+    }
+
+    #voice {
+      background-color: #fff;
+      color: #333;
+      border: none;
+      border-radius: 50%;
+      width: 100px;
+      height: 100px;
+      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    #voice:hover {
+      transform: scale(1.1);
+      box-shadow: 0 12px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    #voice i {
+      font-size: 40px;
+    }
+
+    #a {
+      margin-top: 3rem;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 1rem;
+      border-radius: 10px;
+      width: 80%;
+      margin-left: auto;
+      margin-right: auto;
+      transition: background 0.5s ease;
+    }
+
+    #a::before {
+      content: "Your speech will appear here...";
+      font-style: italic;
+      color: #ddd;
+    }
+
+    .container {
+      margin-top: 5%;
+      text-align: center;
+    }
+  </style>
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.5.0.js"></script>
+
+  <!-- CSRF Token -->
+  {% csrf_token %}
+</head>
+
+<body>
+  <div class="container">
+    <h3>Speech to Text Converter</h3>
+    <p>Click the microphone below and start speaking. The text will appear automatically. <br></p>
+
+
+    <!-- Microphone button -->
+    <div class="mic">
+      <button type="button" onclick="myfunction_onload()" class="btn" id="voice">
+        <i class="fa fa-microphone"></i>
+      </button>
+    </div>
+
+    <!-- Speech to text display area -->
+    <center>
+      <div id="a"></div>
+    </center>
+  </div>
+
+  <script>
+    var csrftoken = jQuery("[name=csrfmiddlewaretoken]").val();
+
+    function myfunction_onload() {
+      // Check for browser compatibility
+      if (!('webkitSpeechRecognition' in window)) {
+        alert("Your browser does not support the Web Speech API. Please try using Chrome.");
+        return;
+      }
+
+      var recognition = new webkitSpeechRecognition();
+      recognition.lang = "en-US"; // Set language
+      recognition.continuous = false; // Whether speech is continuous or stops when paused
+      recognition.interimResults = false; // Whether interim results are returned
+
+      // Start recognition when button is clicked
+      recognition.start();
+
+      recognition.onstart = function () {
+        console.log("Voice recognition started. Speak now...");
+        document.getElementById("voice").style.transform = "scale(1.2)";
+      };
+
+      recognition.onresult = function (event) {
+        var transcript = event.results[0][0].transcript; // Get the speech as text
+        console.log("You said: ", transcript);
+        document.getElementById("a").innerHTML = transcript;
+        document.getElementById("a").style.background = "rgba(0, 0, 0, 0.5)";
+
+        // Send the text to the server via AJAX if needed
+        $.ajax({
+          url: "{% url 'record' %}",
+          method: "POST",
+          data: {
+            text: transcript,
+          },
+          headers: {
+            "X-CSRFToken": "{{csrf_token}}"
+          },
+          success: function (data) {
+            console.log("Server response:", data);
+          },
+          error: function (xhr, status, error) {
+            console.log("Error:", error);
+          }
+        });
+      };
+
+      recognition.onerror = function (event) {
+        console.log("Error occurred in recognition: ", event.error);
+      };
+
+      recognition.onend = function () {
+        console.log("Voice recognition ended.");
+        document.getElementById("voice").style.transform = "scale(1)";
+      };
+    }
+  </script>
+</body>
+
+</html>
